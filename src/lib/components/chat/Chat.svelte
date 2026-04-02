@@ -2648,7 +2648,22 @@
 				.filter((message) => message?.role === 'user' || message?.content?.trim());
 		}
 
-		const { toolIds, toolServers } = getSelectedToolTargets();
+		const toolIds = [];
+		const toolServerIds = [];
+
+		for (const toolId of selectedToolIds) {
+			if (toolId.startsWith('direct_server:')) {
+				let serverId = toolId.replace('direct_server:', '');
+				// Check if serverId is a number
+				if (!isNaN(parseInt(serverId))) {
+					toolServerIds.push(parseInt(serverId));
+				} else {
+					toolServerIds.push(serverId);
+				}
+			} else {
+				toolIds.push(toolId);
+			}
+		}
 
 		// Parse skill mentions (<$skillId|label>) from user messages
 		const skillMentionRegex = /<\$([^|>]+)\|?[^>]*>/g;
@@ -3501,6 +3516,7 @@
 					bind:params
 					bind:files
 					bind:pane={controlPane}
+					chatId={$chatId}
 					models={selectedModelIds.reduce((a, e, i, arr) => {
 						const model = $models.find((m) => m.id === e);
 						if (model) {

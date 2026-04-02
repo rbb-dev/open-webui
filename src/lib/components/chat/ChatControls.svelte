@@ -39,6 +39,8 @@
 	export let history;
 	export let models = [];
 
+	export let chatId = null;
+
 	export let chatFiles = [];
 	export let params = {};
 	export let showMessage: Function;
