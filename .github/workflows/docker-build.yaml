@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
-      - dev
+      - gpt-realtime
     tags:
       - v*
 
 env:
   REGISTRY: ghcr.io
+  IMAGE_NAME: rbb-dev/open-webui-realtime
 
 jobs:
   build-main-image:
@@ -35,7 +35,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Prepare
         run: |
@@ -70,7 +70,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
 
       - name: Extract metadata for Docker cache
         id: cache-meta
@@ -135,7 +135,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Prepare
         run: |
@@ -172,9 +172,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=cuda
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-cuda,onlatest=true
 
       - name: Extract metadata for Docker cache
@@ -241,7 +241,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Prepare
         run: |
@@ -278,9 +278,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda126
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=cuda126
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-cuda126,onlatest=true
 
       - name: Extract metadata for Docker cache
@@ -348,7 +348,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Prepare
         run: |
@@ -382,9 +382,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=ollama
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=ollama
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-ollama,onlatest=true
 
       - name: Extract metadata for Docker cache
@@ -451,7 +451,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Prepare
         run: |
@@ -485,9 +485,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=slim
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=slim
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-slim,onlatest=true
 
       - name: Extract metadata for Docker cache
@@ -543,7 +543,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Download digests
         uses: actions/download-artifact@v5
@@ -574,7 +574,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -597,7 +597,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Download digests
         uses: actions/download-artifact@v5
@@ -627,9 +627,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=cuda
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-cuda,onlatest=true
 
       - name: Create manifest list and push
@@ -653,7 +653,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Download digests
         uses: actions/download-artifact@v5
@@ -683,9 +683,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=cuda126
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=cuda126
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-cuda126,onlatest=true
 
       - name: Create manifest list and push
@@ -709,7 +709,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Download digests
         uses: actions/download-artifact@v5
@@ -739,9 +739,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=ollama
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=ollama
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-ollama,onlatest=true
 
       - name: Create manifest list and push
@@ -765,7 +765,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Download digests
         uses: actions/download-artifact@v5
@@ -795,9 +795,9 @@ jobs:
             type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=raw,enable=${{ github.ref == 'refs/heads/main' }},prefix=,suffix=,value=slim
+            type=raw,enable=${{ github.ref == 'refs/heads/gpt-realtime' }},prefix=,suffix=,value=slim
           flavor: |
-            latest=${{ github.ref == 'refs/heads/main' }}
+            latest=${{ github.ref == 'refs/heads/gpt-realtime' }}
             suffix=-slim,onlatest=true
 
       - name: Create manifest list and push
@@ -813,7 +813,7 @@ jobs:
   # Copy images from GHCR to Docker Hub (best-effort, won't block GHCR)
   copy-to-dockerhub:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    if: false
     needs: [merge-main-images, merge-cuda-images, merge-cuda126-images, merge-ollama-images, merge-slim-images]
     continue-on-error: true
     strategy:
@@ -836,7 +836,7 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
           echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
         env:
-          IMAGE_NAME: '${{ github.repository }}'
+          IMAGE_NAME: '${{ env.IMAGE_NAME }}'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
