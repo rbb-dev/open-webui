@@ -3894,6 +3894,12 @@ ENABLE_OAUTH_GROUP_CREATION = ConfigVar(
     os.getenv('ENABLE_OAUTH_GROUP_CREATION', 'False').lower() == 'true',
 )
 
+ENABLE_OAUTH_GROUP_ID_RESOLUTION = ConfigVar(
+    'ENABLE_OAUTH_GROUP_ID_RESOLUTION',
+    'oauth.enable_group_id_resolution',
+    os.environ.get('ENABLE_OAUTH_GROUP_ID_RESOLUTION', 'False').lower() == 'true',
+)
+
 
 oauth_group_default_share = os.getenv('OAUTH_GROUP_DEFAULT_SHARE', 'true').strip().lower()
 OAUTH_GROUP_DEFAULT_SHARE = ConfigVar(
