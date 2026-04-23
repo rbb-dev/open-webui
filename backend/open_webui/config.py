@@ -653,6 +653,12 @@ ENABLE_OAUTH_GROUP_CREATION = PersistentConfig(
     os.environ.get('ENABLE_OAUTH_GROUP_CREATION', 'False').lower() == 'true',
 )
 
+ENABLE_OAUTH_GROUP_ID_RESOLUTION = PersistentConfig(
+    'ENABLE_OAUTH_GROUP_ID_RESOLUTION',
+    'oauth.enable_group_id_resolution',
+    os.environ.get('ENABLE_OAUTH_GROUP_ID_RESOLUTION', 'False').lower() == 'true',
+)
+
 
 oauth_group_default_share = os.environ.get('OAUTH_GROUP_DEFAULT_SHARE', 'true').strip().lower()
 OAUTH_GROUP_DEFAULT_SHARE = PersistentConfig(
