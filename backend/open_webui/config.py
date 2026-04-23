@@ -2596,6 +2596,8 @@ ENABLE_OAUTH_GROUP_MANAGEMENT = os.getenv('ENABLE_OAUTH_GROUP_MANAGEMENT', 'Fals
 
 ENABLE_OAUTH_GROUP_CREATION = os.getenv('ENABLE_OAUTH_GROUP_CREATION', 'False').lower() == 'true'
 
+ENABLE_OAUTH_GROUP_ID_RESOLUTION = os.environ.get('ENABLE_OAUTH_GROUP_ID_RESOLUTION', 'False').lower() == 'true'
+
 
 oauth_group_default_share = os.getenv('OAUTH_GROUP_DEFAULT_SHARE', 'true').strip().lower()
 OAUTH_GROUP_DEFAULT_SHARE = 'members' if oauth_group_default_share == 'members' else oauth_group_default_share == 'true'
@@ -3204,6 +3206,7 @@ DEFAULT_CONFIG = {
     'oauth.enable_role_mapping': ENABLE_OAUTH_ROLE_MANAGEMENT,
     'oauth.enable_group_mapping': ENABLE_OAUTH_GROUP_MANAGEMENT,
     'oauth.enable_group_creation': ENABLE_OAUTH_GROUP_CREATION,
+    'oauth.enable_group_id_resolution': ENABLE_OAUTH_GROUP_ID_RESOLUTION,
     'oauth.group_default_share': OAUTH_GROUP_DEFAULT_SHARE,
     'oauth.blocked_groups': OAUTH_BLOCKED_GROUPS,
     'oauth.roles_claim': OAUTH_ROLES_CLAIM,
