@@ -1249,6 +1249,134 @@ async def terminal_event_handler(
         )
 
 
+async def execute_tool_call(
+    tool_call_id: str,
+    tool_function_name: str,
+    tool_args: str,
+    tools: dict,
+    request,
+    user,
+    metadata: dict,
+    messages: list,
+    files: list,
+    event_emitter,
+    event_caller,
+    citations_enabled: bool = True,
+) -> dict:
+    """Execute a single tool call and return the result.
+
+    Parses arguments, invokes the tool (direct or callable),
+    processes the result, and extracts citation sources.
+    """
+    tool_function_params = {}
+    if tool_args and tool_args.strip():
+        try:
+            tool_function_params = ast.literal_eval(tool_args)
+        except Exception as e:
+            log.debug(e)
+            try:
+                tool_function_params = json.loads(tool_args)
+            except Exception as e:
+                log.error(f'Error parsing tool call arguments: {tool_args}')
+                return {
+                    'tool_call_id': tool_call_id,
+                    'content': f'Error: Tool call arguments could not be parsed. The model generated malformed or incomplete JSON for `{tool_function_name}`. Please try again.',
+                }
+
+    log.debug(f'Parsed args from {tool_args} to {tool_function_params}')
+
+    tool_result = None
+    tool = None
+    tool_type = None
+    direct_tool = False
+
+    if tool_function_name in tools:
+        tool = tools[tool_function_name]
+        spec = tool.get('spec', {})
+
+        tool_type = tool.get('type', '')
+        direct_tool = tool.get('direct', False)
+
+        try:
+            allowed_params = spec.get('parameters', {}).get('properties', {}).keys()
+            tool_function_params = {k: v for k, v in tool_function_params.items() if k in allowed_params}
+
+            if direct_tool:
+                tool_result = await event_caller(
+                    {
+                        'type': 'execute:tool',
+                        'data': {
+                            'id': str(uuid4()),
+                            'name': tool_function_name,
+                            'params': tool_function_params,
+                            'server': tool.get('server', {}),
+                            'session_id': metadata.get('session_id', None),
+                        },
+                    }
+                )
+            else:
+                tool_function = await get_updated_tool_function(
+                    function=tool['callable'],
+                    extra_params={
+                        '__messages__': messages,
+                        '__files__': files,
+                    },
+                )
+                tool_result = await tool_function(**tool_function_params)
+
+        except Exception as e:
+            tool_result = str(e)
+
+    tool_result, tool_result_files, tool_result_embeds = await process_tool_result(
+        request,
+        tool_function_name,
+        tool_result,
+        tool_type,
+        direct_tool,
+        metadata,
+        user,
+    )
+
+    await terminal_event_handler(
+        tool_function_name,
+        tool_function_params,
+        tool_result,
+        event_emitter,
+    )
+
+    sources = []
+    if (
+        citations_enabled
+        and tool_function_name
+        in [
+            'search_web',
+            'fetch_url',
+            'view_file',
+            'view_knowledge_file',
+            'query_knowledge_files',
+        ]
+        and tool_result
+    ):
+        try:
+            sources = get_citation_source_from_tool_result(
+                tool_name=tool_function_name,
+                tool_params=tool_function_params,
+                tool_result=tool_result,
+                tool_id=tool.get('tool_id', '') if tool else '',
+            )
+        except Exception as e:
+            log.exception(f'Error extracting citation source: {e}')
+
+    return {
+        'tool_call_id': tool_call_id,
+        'content': str(tool_result) if tool_result else '',
+        **({'files': tool_result_files} if tool_result_files else {}),
+        **({'embeds': tool_result_embeds} if tool_result_embeds else {}),
+        'sources': sources,
+        'params': tool_function_params,
+    }
+
+
 async def chat_completion_tools_handler(
     request: Request, body: dict, extra_params: dict, user: UserModel, models, tools
 ) -> tuple[dict, dict]:
