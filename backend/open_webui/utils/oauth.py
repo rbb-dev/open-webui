@@ -43,6 +43,7 @@ from open_webui.config import (
     ENABLE_OAUTH_ROLE_MANAGEMENT,
     ENABLE_OAUTH_GROUP_MANAGEMENT,
     ENABLE_OAUTH_GROUP_CREATION,
+    ENABLE_OAUTH_GROUP_ID_RESOLUTION,
     OAUTH_GROUP_DEFAULT_SHARE,
     OAUTH_BLOCKED_GROUPS,
     OAUTH_GROUPS_SEPARATOR,
@@ -121,6 +122,7 @@ auth_manager_config.OAUTH_MERGE_ACCOUNTS_BY_EMAIL = OAUTH_MERGE_ACCOUNTS_BY_EMAI
 auth_manager_config.ENABLE_OAUTH_ROLE_MANAGEMENT = ENABLE_OAUTH_ROLE_MANAGEMENT
 auth_manager_config.ENABLE_OAUTH_GROUP_MANAGEMENT = ENABLE_OAUTH_GROUP_MANAGEMENT
 auth_manager_config.ENABLE_OAUTH_GROUP_CREATION = ENABLE_OAUTH_GROUP_CREATION
+auth_manager_config.ENABLE_OAUTH_GROUP_ID_RESOLUTION = ENABLE_OAUTH_GROUP_ID_RESOLUTION
 auth_manager_config.OAUTH_GROUP_DEFAULT_SHARE = OAUTH_GROUP_DEFAULT_SHARE
 auth_manager_config.OAUTH_BLOCKED_GROUPS = OAUTH_BLOCKED_GROUPS
 auth_manager_config.OAUTH_ROLES_CLAIM = OAUTH_ROLES_CLAIM
@@ -281,6 +283,79 @@ def is_in_blocked_groups(group_name: str, groups: list) -> bool:
                 return True
 
     return False
+
+
+async def _resolve_microsoft_group_ids(access_token: str) -> dict[str, str]:
+    """
+    Call Microsoft Graph ``/me/transitiveMemberOf`` to build a ``{group_id: display_name}``
+    mapping for the signed-in user's groups (direct and inherited).
+    """
+    guid_to_name: dict[str, str] = {}
+    url = 'https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.group?$select=id,displayName'
+    headers = {'Authorization': f'Bearer {access_token}'}
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession(trust_env=True, timeout=timeout) as session:
+            while url:
+                async with session.get(url, headers=headers, ssl=AIOHTTP_CLIENT_SESSION_SSL) as resp:
+                    if not resp.ok:
+                        log.warning(f'Microsoft Graph /me/transitiveMemberOf returned {resp.status}')
+                        break
+                    data = await resp.json()
+                    for item in data.get('value', []):
+                        oid = item.get('id')
+                        name = item.get('displayName')
+                        if oid and name:
+                            guid_to_name[oid.lower()] = name
+                    next_url = data.get('@odata.nextLink')
+                    url = next_url if next_url and next_url.startswith('https://graph.microsoft.com/') else None
+    except Exception as e:
+        log.warning(f'Error resolving group IDs via Microsoft Graph: {e}')
+    return guid_to_name
+
+
+async def resolve_oauth_group_ids(
+    group_claim_list: list,
+    access_token: str,
+    provider: str,
+) -> None:
+    """
+    Resolve UUID-shaped group claim values to human-readable display names
+    via the identity provider's API.  Mutates *group_claim_list* in-place so
+    that downstream group-matching logic sees names instead of opaque IDs.
+
+    Values that cannot be resolved are left unchanged (graceful fallback).
+    """
+    if not group_claim_list or not access_token:
+        return
+
+    uuid_re = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    guid_indices = [
+        i for i, v in enumerate(group_claim_list)
+        if isinstance(v, str) and uuid_re.match(v)
+    ]
+    if not guid_indices:
+        return
+
+    log.debug(f'Found {len(guid_indices)} UUID-shaped group ID(s) in claim, resolving via {provider}')
+
+    if provider == 'microsoft':
+        guid_to_name = await _resolve_microsoft_group_ids(access_token)
+    else:
+        log.debug(f'Group ID resolution not supported for provider: {provider}')
+        return
+
+    if not guid_to_name:
+        return
+
+    resolved_count = 0
+    for i in guid_indices:
+        name = guid_to_name.get(group_claim_list[i].lower())
+        if name:
+            group_claim_list[i] = name
+            resolved_count += 1
+
+    log.info(f'Resolved {resolved_count}/{len(guid_indices)} group ID(s) to display names')
 
 
 def get_parsed_and_base_url(server_url) -> tuple[urllib.parse.ParseResult, str]:
@@ -1686,6 +1761,22 @@ class OAuthManager:
                 data={'id': user.id},
                 expires_delta=parse_duration(auth_manager_config.JWT_EXPIRES_IN),
             )
+            if auth_manager_config.ENABLE_OAUTH_GROUP_ID_RESOLUTION:
+                # Resolve UUID group IDs to display names in-place;
+                # update_user_groups re-walks user_data and will see the substituted values.
+                oauth_claim = auth_manager_config.OAUTH_GROUPS_CLAIM
+                claim_data = user_data
+                if oauth_claim:
+                    nested_claims = oauth_claim.split('.')
+                    for nested_claim in nested_claims:
+                        claim_data = claim_data.get(nested_claim, {})
+                if isinstance(claim_data, list):
+                    await resolve_oauth_group_ids(
+                        group_claim_list=claim_data,
+                        access_token=token.get('access_token'),
+                        provider=provider,
+                    )
+
             if auth_manager_config.ENABLE_OAUTH_GROUP_MANAGEMENT:
                 await self.update_user_groups(
                     user=user,
