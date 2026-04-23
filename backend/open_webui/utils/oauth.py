@@ -35,6 +35,7 @@ from open_webui.config import (
     DEFAULT_USER_ROLE,
     ENABLE_OAUTH,
     ENABLE_OAUTH_GROUP_CREATION,
+    ENABLE_OAUTH_GROUP_ID_RESOLUTION,
     ENABLE_OAUTH_GROUP_MANAGEMENT,
     ENABLE_OAUTH_ROLE_MANAGEMENT,
     ENABLE_OAUTH_SIGNUP,
@@ -187,6 +188,10 @@ OAUTH_RUNTIME_CONFIG = {
     'ENABLE_OAUTH_GROUP_CREATION': (
         'oauth.enable_group_creation',
         ENABLE_OAUTH_GROUP_CREATION,
+    ),
+    'ENABLE_OAUTH_GROUP_ID_RESOLUTION': (
+        'oauth.enable_group_id_resolution',
+        ENABLE_OAUTH_GROUP_ID_RESOLUTION,
     ),
     'OAUTH_GROUP_DEFAULT_SHARE': (
         'oauth.group_default_share',
@@ -398,6 +403,76 @@ def _parse_blocked_groups(value) -> list[str]:
     if not isinstance(value, list):
         return []
     return [group for group in value if isinstance(group, str) and group]
+
+
+async def _resolve_microsoft_group_ids(access_token: str) -> dict[str, str]:
+    """
+    Call Microsoft Graph ``/me/transitiveMemberOf`` to build a ``{group_id: display_name}``
+    mapping for the signed-in user's groups (direct and inherited).
+    """
+    guid_to_name: dict[str, str] = {}
+    url = 'https://graph.microsoft.com/v1.0/me/transitiveMemberOf/microsoft.graph.group?$select=id,displayName'
+    headers = {'Authorization': f'Bearer {access_token}'}
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession(trust_env=True, timeout=timeout) as session:
+            while url:
+                async with session.get(url, headers=headers, ssl=AIOHTTP_CLIENT_SESSION_SSL) as resp:
+                    if not resp.ok:
+                        log.warning(f'Microsoft Graph /me/transitiveMemberOf returned {resp.status}')
+                        break
+                    data = await resp.json()
+                    for item in data.get('value', []):
+                        oid = item.get('id')
+                        name = item.get('displayName')
+                        if oid and name:
+                            guid_to_name[oid.lower()] = name
+                    next_url = data.get('@odata.nextLink')
+                    url = next_url if next_url and next_url.startswith('https://graph.microsoft.com/') else None
+    except Exception as e:
+        log.warning(f'Error resolving group IDs via Microsoft Graph: {e}')
+    return guid_to_name
+
+
+async def resolve_oauth_group_ids(
+    group_claim_list: list,
+    access_token: str | None,
+    provider: str | None,
+) -> None:
+    """
+    Resolve UUID-shaped group claim values to human-readable display names
+    via the identity provider's API.  Mutates *group_claim_list* in-place so
+    that downstream group-matching logic sees names instead of opaque IDs.
+
+    Values that cannot be resolved are left unchanged (graceful fallback).
+    """
+    if not group_claim_list or not access_token:
+        return
+
+    uuid_re = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+    guid_indices = [i for i, v in enumerate(group_claim_list) if isinstance(v, str) and uuid_re.match(v)]
+    if not guid_indices:
+        return
+
+    log.debug(f'Found {len(guid_indices)} UUID-shaped group ID(s) in claim, resolving via {provider}')
+
+    if provider == 'microsoft':
+        guid_to_name = await _resolve_microsoft_group_ids(access_token)
+    else:
+        log.debug(f'Group ID resolution not supported for provider: {provider}')
+        return
+
+    if not guid_to_name:
+        return
+
+    resolved_count = 0
+    for i in guid_indices:
+        name = guid_to_name.get(group_claim_list[i].lower())
+        if name:
+            group_claim_list[i] = name
+            resolved_count += 1
+
+    log.info(f'Resolved {resolved_count}/{len(guid_indices)} group ID(s) to display names')
 
 
 def get_parsed_and_base_url(server_url) -> tuple[urllib.parse.ParseResult, str]:
@@ -1690,7 +1765,16 @@ class OAuthManager:
         return user
 
     async def update_user_groups(
-        self, request, user, user_data, default_permissions, db=None, *, token_claims: dict | None = None
+        self,
+        request,
+        user,
+        user_data,
+        default_permissions,
+        db=None,
+        *,
+        token_claims: dict | None = None,
+        access_token: str | None = None,
+        provider: str | None = None,
     ):
         auth_config = await get_oauth_runtime_config()
         log.debug('Running OAUTH Group management')
@@ -1714,6 +1798,14 @@ class OAuthManager:
                     user_oauth_groups = [claim_data]
             else:
                 user_oauth_groups = []
+
+        if auth_config.ENABLE_OAUTH_GROUP_ID_RESOLUTION:
+            # Entra ID can send group object IDs; creation, blocking and matching below all work on names.
+            await resolve_oauth_group_ids(
+                group_claim_list=user_oauth_groups,
+                access_token=access_token,
+                provider=provider,
+            )
 
         user_current_groups: list[GroupModel] = await Groups.get_groups_by_member_id(user.id, db=db)
         all_available_groups: list[GroupModel] = await Groups.get_all_groups(db=db)
@@ -2203,6 +2295,8 @@ class OAuthManager:
                     user_data=user_data,
                     default_permissions=await Config.get('user.permissions'),
                     db=db,
+                    access_token=token.get('access_token'),
+                    provider=provider,
                 )
 
         except Exception as e:
