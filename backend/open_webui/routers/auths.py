@@ -1743,6 +1743,8 @@ async def token_exchange(
             default_permissions=await Config.get('user.permissions'),
             token_claims=token_claims,
             db=db,
+            access_token=form_data.token,
+            provider=provider,
         )
 
     return await create_signin_response(request, user, db, source='oauth')
