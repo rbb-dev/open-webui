@@ -15,6 +15,7 @@
 		config,
 		user,
 		models as _models,
+		realtimeClientConfig,
 		temporaryChatEnabled,
 		selectedFolder,
 		chats,
@@ -29,6 +30,7 @@
 	import MessageInput from './MessageInput.svelte';
 	import FolderPlaceholder from './Placeholder/FolderPlaceholder.svelte';
 	import FolderTitle from './Placeholder/FolderTitle.svelte';
+	import { modelUsesRealtime } from './MessageInput/realtime/model-capabilities';
 
 	const i18n = getContext('i18n');
 
@@ -59,6 +61,9 @@
 	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
 	export let onChange = (e) => {};
+	export let resolveVoiceOverlayMode:
+		| ((modelId?: string | null) => Promise<'call' | 'realtime' | null>)
+		| null = null;
 
 	export let toolServers = [];
 
@@ -72,6 +77,10 @@
 	}
 
 	$: models = selectedModels.map((id) => $_models.find((m) => m.id === id));
+	$: activeModel = atSelectedModel ?? models[selectedModelIdx];
+	$: inputPlaceholder = modelUsesRealtime(activeModel, null, $realtimeClientConfig)
+		? $i18n.t('Press the voice button or type to start a realtime session')
+		: $i18n.t('How can I help you today?');
 </script>
 
 <div class="m-auto w-full max-w-6xl px-2 @2xl:px-20 translate-y-6 py-24 text-center">
@@ -213,6 +222,7 @@
 					bind:this={messageInput}
 					{history}
 					{selectedModels}
+					{resolveVoiceOverlayMode}
 					bind:files
 					bind:prompt
 					bind:autoScroll
@@ -228,7 +238,7 @@
 					{toolServers}
 					{stopResponse}
 					{createMessagePair}
-					placeholder={$i18n.t('How can I help you today?')}
+					placeholder={inputPlaceholder}
 					{onChange}
 					{onUpload}
 					on:submit={(e) => {

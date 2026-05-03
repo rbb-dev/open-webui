@@ -10,6 +10,7 @@ from fastapi import Request
 from open_webui.socket.utils import RedisDict
 from open_webui.routers import openai, ollama
 from open_webui.functions import get_function_models
+from open_webui.realtime.catalog import is_realtime_model_id
 
 
 from open_webui.models.functions import Functions
@@ -59,6 +60,38 @@ async def fetch_openai_models(request: Request, user: UserModel = None):
     return openai_response['data']
 
 
+_rt_models_fallback: list[dict] = []
+
+
+@cached(ttl=3600, key='realtime_models')
+async def _fetch_realtime_models_cached(request: Request, user: UserModel = None) -> list[dict]:
+    global _rt_models_fallback
+    try:
+        rt_base_url = str(getattr(request.app.state.config, 'AUDIO_RT_API_BASE_URL', '')).rstrip('/')
+        rt_api_key = str(getattr(request.app.state.config, 'AUDIO_RT_API_KEY', ''))
+        rt_whitelist = list(getattr(request.app.state.config, 'AUDIO_RT_MODELS', []) or [])
+        if not rt_base_url or not rt_api_key:
+            return []
+
+        from open_webui.routers.openai import send_get_request
+
+        data = await send_get_request(url=f'{rt_base_url}/models', key=rt_api_key, user=user)
+        all_models = data.get('data', []) if isinstance(data, dict) else []
+        rt_models = [
+            m for m in all_models if is_realtime_model_id(m.get('id', '')) and (not rt_whitelist or m.get('id') in rt_whitelist)
+        ]
+        if rt_models:
+            _rt_models_fallback = rt_models
+        return rt_models
+    except Exception as e:
+        log.warning(f'Failed to fetch realtime models: {e}')
+        return list(_rt_models_fallback)
+
+
+async def fetch_realtime_models(request: Request, user: UserModel = None) -> list[dict]:
+    return await _fetch_realtime_models_cached(request, user=user)
+
+
 async def get_all_base_models(request: Request, user: UserModel = None):
     openai_task = (
         fetch_openai_models(request, user)
@@ -71,10 +104,17 @@ async def get_all_base_models(request: Request, user: UserModel = None):
         else asyncio.sleep(0, result=[])
     )
     function_task = get_function_models(request)
+    realtime_task = (
+        fetch_realtime_models(request, user)
+        if getattr(request.app.state.config, 'AUDIO_RT_ENGINE', '') == 'openai'
+        else asyncio.sleep(0, result=[])
+    )
 
-    openai_models, ollama_models, function_models = await asyncio.gather(openai_task, ollama_task, function_task)
+    openai_models, ollama_models, function_models, rt_models = await asyncio.gather(
+        openai_task, ollama_task, function_task, realtime_task
+    )
 
-    return function_models + openai_models + ollama_models
+    return function_models + openai_models + ollama_models + rt_models
 
 
 async def get_all_models(request, refresh: bool = False, user: UserModel = None):
