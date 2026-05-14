@@ -19,6 +19,8 @@ export const canUseNotificationTargets = ({ user, config }: SettingsAccessContex
 export const canUseTemporaryChats = ({ user }: SettingsAccessContext) =>
 	user?.role === 'admin' || user?.permissions?.chat?.temporary;
 export const isSettingsAdmin = ({ user }: SettingsAccessContext) => user?.role === 'admin';
+export const canUseRealtimeVoice = ({ config }: SettingsAccessContext) =>
+	config?.audio?.realtime?.enabled === true;
 
 /** Only permission-gated text needs an explicit rule. Provider/disclosure state is irrelevant. */
 export function canSearchSetting(
@@ -65,5 +67,10 @@ export function canSearchSetting(
 		return isSettingsAdmin(context);
 	if (stem === 'settings.personal.interface.temporaryChatByDefault')
 		return !!canUseTemporaryChats(context);
+	if (
+		stem === 'settings.personal.audio.sections.realtimeVoice' ||
+		key.startsWith('settings.personal.audio.realtime.')
+	)
+		return canUseRealtimeVoice(context);
 	return true;
 }
