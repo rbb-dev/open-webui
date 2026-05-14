@@ -7,6 +7,8 @@
 		user as _user,
 		mobile,
 		currentChatPage,
+		showCallOverlay,
+		socket,
 		temporaryChatEnabled
 	} from '$lib/stores';
 	import { tick, getContext, onMount, onDestroy, createEventDispatcher } from 'svelte';
@@ -377,6 +379,9 @@
 				history.messages[messageId].content = content;
 				history.messages[messageId].files = files;
 				await updateChat();
+				if ($showCallOverlay && chatId) {
+					$socket?.emit('realtime:chat_edit', { chatId, messageId });
+				}
 			}
 		} else {
 			if (submit) {

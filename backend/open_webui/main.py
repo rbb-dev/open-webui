@@ -135,6 +135,14 @@ from open_webui.models.functions import Functions
 from open_webui.models.messages import Messages
 from open_webui.models.models import Models
 from open_webui.models.users import Users
+from open_webui.realtime.app_hooks import (
+    start_realtime_background_tasks,
+    stop_realtime_background_tasks,
+)
+from open_webui.realtime.chat_handoff import (
+    route_chat_completion_to_realtime,
+    should_route_chat_to_realtime,
+)
 from open_webui.routers import (
     analytics,
     audio,
@@ -347,6 +355,7 @@ async def lifespan(app: FastAPI):
 
     asyncio.create_task(periodic_usage_pool_cleanup())
     asyncio.create_task(periodic_session_pool_cleanup())
+    start_realtime_background_tasks(app)
 
     from open_webui.utils.automations import scheduler_worker_loop
 
@@ -422,6 +431,8 @@ async def lifespan(app: FastAPI):
 
     if hasattr(app.state, 'redis_task_command_listener'):
         app.state.redis_task_command_listener.cancel()
+
+    await stop_realtime_background_tasks(app)
 
     await publish_event(app, EVENTS.SYSTEM_SHUTDOWN_COMPLETED, source='system')
 
@@ -1472,6 +1483,9 @@ async def chat_completion(
 
     async def process_chat(request, form_data, user, metadata, model, tasks=None):
         try:
+            if await should_route_chat_to_realtime(request, model):
+                return await route_chat_completion_to_realtime(request, form_data, user)
+
             form_data, metadata, events = await process_chat_payload(request, form_data, user, metadata, model)
 
             response = await chat_completion_handler(request, form_data, user)
@@ -1888,6 +1902,8 @@ async def get_app_config(request: Request):
         'audio.tts.voice',
         'audio.tts.split_on',
         'audio.stt.engine',
+        'audio.realtime.engine',
+        'audio.realtime.api_key',
         'rag.file.max_size',
         'rag.file.max_count',
         'file.image_compression_width',
@@ -1981,6 +1997,10 @@ async def get_app_config(request: Request):
                     },
                     'stt': {
                         'engine': config.get('audio.stt.engine'),
+                    },
+                    'realtime': {
+                        'enabled': config.get('audio.realtime.engine') == 'openai'
+                        and bool(config.get('audio.realtime.api_key')),
                     },
                 },
                 'file': {
