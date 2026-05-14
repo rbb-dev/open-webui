@@ -4,7 +4,6 @@ import logging
 import sys
 import time
 
-from aiocache import cached
 from fastapi import Request
 from open_webui.config import (
     BYPASS_ADMIN_ACCESS_CONTROL,
@@ -17,6 +16,7 @@ from open_webui.models.functions import Functions
 from open_webui.models.groups import Groups
 from open_webui.models.models import Models
 from open_webui.models.users import UserModel
+from open_webui.realtime.model_synthesis import fetch_realtime_models
 from open_webui.routers import ollama, openai
 from open_webui.socket.utils import RedisDict
 from open_webui.utils.access_control import has_access, has_base_model_access
@@ -64,10 +64,17 @@ async def get_all_base_models(request: Request, user: UserModel = None):
         else asyncio.sleep(0, result=[])
     )
     function_task = get_function_models(request)
+    realtime_task = (
+        fetch_realtime_models(request, user)
+        if getattr(request.app.state.config, 'AUDIO_RT_ENGINE', '') == 'openai'
+        else asyncio.sleep(0, result=[])
+    )
 
-    openai_models, ollama_models, function_models = await asyncio.gather(openai_task, ollama_task, function_task)
+    openai_models, ollama_models, function_models, rt_models = await asyncio.gather(
+        openai_task, ollama_task, function_task, realtime_task
+    )
 
-    return function_models + openai_models + ollama_models
+    return function_models + openai_models + ollama_models + rt_models
 
 
 async def get_all_models(request, refresh: bool = False, user: UserModel = None):

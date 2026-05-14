@@ -177,7 +177,7 @@
 			console.log(res.text);
 
 			if (res.text !== '') {
-				const _responses = await submitPrompt(res.text, { _raw: true });
+				const _responses = await submitPrompt(res.text, []);
 				console.log(_responses);
 			}
 		}

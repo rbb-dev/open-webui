@@ -450,6 +450,7 @@
 		await tick();
 		const type = event?.data?.type ?? null;
 		const data = event?.data?.data ?? null;
+		const suppressNotification = data?.notification?.suppress === true;
 
 		// Calendar alerts are not chat-scoped — handle before chat_id checks
 		if (type === 'calendar:alert' && data) {
@@ -589,7 +590,7 @@
 				const { done, content, title } = data;
 				const displayTitle = title || $i18n.t('New Chat');
 
-				if (done) {
+				if (done && !suppressNotification) {
 					if (
 						($settings?.notificationSound ?? true) &&
 						($settings?.notificationSoundAlways ?? false)

@@ -2225,6 +2225,7 @@
 	"Voice": "",
 	"Voice Input": "",
 	"Voice mode": "",
+	"Voice mode only sends images to the model. Other attached files are saved to chat history but the assistant will not see them.": "",
 	"Voice Mode Prompt": "",
 	"Waiting for upload...": "",
 	"Warning": "",
