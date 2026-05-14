@@ -3,14 +3,14 @@
 	import { createEventDispatcher, onMount, getContext } from 'svelte';
 	const dispatch = createEventDispatcher();
 
-	import { getBackendConfig } from '$lib/apis';
+	import { getBackendConfig, getModels as getGlobalModels } from '$lib/apis';
 	import {
 		getAudioConfig,
 		updateAudioConfig,
 		getModels as _getModels,
 		getVoices as _getVoices
 	} from '$lib/apis/audio';
-	import { config, settings } from '$lib/stores';
+	import { config, models as modelsStore, settings } from '$lib/stores';
 
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
@@ -26,6 +26,7 @@
 	import AdminSettingField from './AdminSettingField.svelte';
 	import AdminSettingRow from './AdminSettingRow.svelte';
 	import AdminSettingSection from './AdminSettingSection.svelte';
+	import RealtimeSettings from './RealtimeSettings.svelte';
 
 	const i18n = getContext<Writable<i18nType>>('i18n');
 
@@ -73,6 +74,10 @@
 			description?: string;
 		};
 	};
+
+	// Realtime child component
+	let realtimeRef: RealtimeSettings;
+	let initialRtConfig: any = null;
 
 	// eslint-disable-next-line no-undef
 	let voices: SpeechSynthesisVoice[] = [];
@@ -176,12 +181,14 @@
 				MISTRAL_API_KEY: STT_MISTRAL_API_KEY,
 				MISTRAL_API_BASE_URL: STT_MISTRAL_API_BASE_URL,
 				MISTRAL_USE_CHAT_COMPLETIONS: STT_MISTRAL_USE_CHAT_COMPLETIONS
-			}
+			},
+			rt: realtimeRef?.getConfig() ?? null
 		});
 
 		if (res) {
 			saveHandler();
 			config.set(await getBackendConfig());
+			modelsStore.set(await getGlobalModels(localStorage.token, null, false, true));
 		}
 	};
 
@@ -230,6 +237,10 @@
 			STT_MISTRAL_API_KEY = res.stt.MISTRAL_API_KEY;
 			STT_MISTRAL_API_BASE_URL = res.stt.MISTRAL_API_BASE_URL;
 			STT_MISTRAL_USE_CHAT_COMPLETIONS = res.stt.MISTRAL_USE_CHAT_COMPLETIONS;
+
+			if (res.rt) {
+				initialRtConfig = res.rt;
+			}
 		}
 
 		await getVoices();
@@ -716,6 +727,10 @@
 				</SettingsSelect>
 			</AdminSettingRow>
 		</AdminSettingSection>
+
+		{#if initialRtConfig !== null}
+			<RealtimeSettings bind:this={realtimeRef} {initialRtConfig} />
+		{/if}
 	</div>
 	<div class="flex justify-end pt-6 text-sm font-normal">
 		<button
