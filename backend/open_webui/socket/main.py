@@ -35,6 +35,8 @@ from open_webui.models.chats import Chats
 from open_webui.models.folders import Folders
 from open_webui.models.notes import Notes, NoteUpdateForm
 from open_webui.models.users import UserNameResponse, Users
+from open_webui.realtime.app_hooks import handle_socket_disconnect
+from open_webui.realtime.socket_handlers import register_realtime_socket_handlers
 from open_webui.socket.utils import RedisDict, RedisLock, YdocManager
 from open_webui.tasks import create_task, stop_item_tasks
 from open_webui.utils.access_control import has_permission
@@ -167,6 +169,17 @@ else:
 
     aquire_func = release_func = renew_func = lambda: True
     session_aquire_func = session_release_func = session_renew_func = lambda: True
+
+
+def _get_socket_app(sid):
+    try:
+        environ = sio.get_environ(sid)
+    except TypeError:
+        environ = sio.get_environ(sid, namespace='/')
+    if not environ:
+        return None
+    scope = environ.get('asgi.scope') or {}
+    return scope.get('app')
 
 
 YDOC_MANAGER = YdocManager(
@@ -907,6 +920,8 @@ async def yjs_awareness_update(sid, data):
 
 @sio.event
 async def disconnect(sid, reason=None):
+    await handle_socket_disconnect(sid)
+
     if sid in SESSION_POOL:
         del SESSION_POOL[sid]
 
@@ -1164,3 +1179,11 @@ async def get_event_call(request_info):
 
 
 get_event_caller = get_event_call
+
+register_realtime_socket_handlers(
+    sio=sio,
+    session_pool=SESSION_POOL,
+    get_socket_app=_get_socket_app,
+    get_event_emitter=get_event_emitter,
+    get_event_call=get_event_call,
+)

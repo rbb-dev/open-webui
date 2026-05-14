@@ -1638,6 +1638,83 @@ AUDIO_TTS_MISTRAL_API_KEY = os.getenv('AUDIO_TTS_MISTRAL_API_KEY', '')
 AUDIO_TTS_MISTRAL_API_BASE_URL = os.getenv('AUDIO_TTS_MISTRAL_API_BASE_URL', 'https://api.mistral.ai/v1')
 
 ####################################
+# Realtime (Voice-to-Voice)
+####################################
+AUDIO_RT_ENGINE = os.getenv('AUDIO_RT_ENGINE', '')
+AUDIO_RT_API_KEY = os.getenv('AUDIO_RT_API_KEY', '')
+AUDIO_RT_API_BASE_URL = os.getenv('AUDIO_RT_API_BASE_URL', 'https://api.openai.com/v1')
+AUDIO_RT_MODELS = [m.strip() for m in os.getenv('AUDIO_RT_MODELS', '').split(',') if m.strip()]
+AUDIO_RT_VOICE = os.getenv('AUDIO_RT_VOICE', 'marin')
+AUDIO_RT_VAD_TYPE = os.getenv('AUDIO_RT_VAD_TYPE', 'server_vad')
+AUDIO_RT_SERVER_VAD_THRESHOLD = float(os.getenv('AUDIO_RT_SERVER_VAD_THRESHOLD', '0.5'))
+AUDIO_RT_SERVER_VAD_SILENCE_DURATION_MS = int(os.getenv('AUDIO_RT_SERVER_VAD_SILENCE_DURATION_MS', '500'))
+AUDIO_RT_SERVER_VAD_PREFIX_PADDING_MS = int(os.getenv('AUDIO_RT_SERVER_VAD_PREFIX_PADDING_MS', '300'))
+AUDIO_RT_SEMANTIC_VAD_EAGERNESS = os.getenv('AUDIO_RT_SEMANTIC_VAD_EAGERNESS', 'auto')
+AUDIO_RT_TRANSCRIPTION_MODEL = os.getenv('AUDIO_RT_TRANSCRIPTION_MODEL', 'gpt-4o-transcribe')
+AUDIO_RT_NOISE_REDUCTION = os.getenv('AUDIO_RT_NOISE_REDUCTION', 'near_field')
+AUDIO_RT_MAX_RESPONSE_OUTPUT_TOKENS = os.getenv('AUDIO_RT_MAX_RESPONSE_OUTPUT_TOKENS', '')
+AUDIO_RT_CONTEXT_ENABLED = os.environ.get('AUDIO_RT_CONTEXT_ENABLED', 'false').lower() == 'true'
+AUDIO_RT_CONTEXT_RECENT_EXCHANGES_LIMIT = int(os.getenv('AUDIO_RT_CONTEXT_RECENT_EXCHANGES_LIMIT', '10'))
+AUDIO_RT_CONTEXT_MAX_HISTORY_EXCHANGES = int(os.getenv('AUDIO_RT_CONTEXT_MAX_HISTORY_EXCHANGES', '40'))
+AUDIO_RT_CONTEXT_MAX_HISTORY_BYTES = int(os.getenv('AUDIO_RT_CONTEXT_MAX_HISTORY_BYTES', '16000'))
+AUDIO_RT_CONTEXT_SUMMARIZE = os.environ.get('AUDIO_RT_CONTEXT_SUMMARIZE', 'false').lower() == 'true'
+AUDIO_RT_DEFAULT_CONTEXT_SUMMARY_PROMPT = """### Task:
+Summarize the following chat history for a realtime voice assistant so it can continue the conversation with the right continuity context.
+### Guidelines:
+- Focus on important user preferences, ongoing tasks, decisions, constraints, and unresolved questions.
+- Omit greetings, filler, and repetitive back-and-forth.
+- Do not invent facts or intentions.
+- Preserve uncertainty when relevant.
+- Treat this as continuity context, not a new user request.
+- Keep the summary under {{SUMMARY_MAX_SIZE}} characters.
+- Use the chat's primary language; default to English if multilingual.
+### Output:
+Return only the summary text with no JSON, XML, markdown, or extra commentary.
+### Chat History:
+<chat_history>
+{{MESSAGES}}
+</chat_history>"""
+
+AUDIO_RT_DEFAULT_IDLE_CALL_CHECKIN_PROMPT = (
+    'System message: user is idle and needs a gentle push to talk to you, say something friendly to engage the user.'
+)
+
+AUDIO_RT_CONTEXT_UNANSWERED_LAST_USER_TURN = os.getenv('AUDIO_RT_CONTEXT_UNANSWERED_LAST_USER_TURN', 'discard')
+
+AUDIO_RT_CONTEXT_SUMMARY_PROMPT = os.getenv(
+        'AUDIO_RT_CONTEXT_SUMMARY_PROMPT',
+        '',
+    )
+
+AUDIO_RT_CONTEXT_SUMMARY_MAX_SIZE = int(os.getenv('AUDIO_RT_CONTEXT_SUMMARY_MAX_SIZE', '2000'))
+
+AUDIO_RT_SPEED = float(os.getenv('AUDIO_RT_SPEED', '1.0'))
+
+AUDIO_RT_TRANSCRIPTION_PROMPT = os.getenv('AUDIO_RT_TRANSCRIPTION_PROMPT', '')
+
+AUDIO_RT_VAD_IDLE_TIMEOUT_MS = os.getenv('AUDIO_RT_VAD_IDLE_TIMEOUT_MS', '')
+
+AUDIO_RT_VAD_CREATE_RESPONSE = os.environ.get('AUDIO_RT_VAD_CREATE_RESPONSE', 'true').lower() == 'true'
+
+AUDIO_RT_VAD_INTERRUPT_RESPONSE = os.environ.get('AUDIO_RT_VAD_INTERRUPT_RESPONSE', 'true').lower() == 'true'
+
+AUDIO_RT_SESSION_TIMEOUT = int(os.getenv('AUDIO_RT_SESSION_TIMEOUT', '180'))
+
+AUDIO_RT_IDLE_CALL_CHECKIN_INTERVAL = int(os.getenv('AUDIO_RT_IDLE_CALL_CHECKIN_INTERVAL', '45'))
+
+AUDIO_RT_IDLE_CALL_CHECKIN_PROMPT = os.getenv(
+        'AUDIO_RT_IDLE_CALL_CHECKIN_PROMPT',
+        AUDIO_RT_DEFAULT_IDLE_CALL_CHECKIN_PROMPT,
+    )
+
+AUDIO_RT_TRUNCATION_STRATEGY = os.getenv('AUDIO_RT_TRUNCATION_STRATEGY', 'auto')
+
+AUDIO_RT_TRUNCATION_RETENTION_RATIO = float(os.getenv('AUDIO_RT_TRUNCATION_RETENTION_RATIO', '0.8'))
+
+AUDIO_RT_TRUNCATION_TOKEN_LIMIT = os.getenv('AUDIO_RT_TRUNCATION_TOKEN_LIMIT', '')
+
+
+####################################
 # WEBUI
 ####################################
 
@@ -1949,6 +2026,13 @@ USER_PERMISSIONS_FEATURES_USER_WEBHOOKS = (
 
 USER_PERMISSIONS_SETTINGS_INTERFACE = os.getenv('USER_PERMISSIONS_SETTINGS_INTERFACE', 'True').lower() == 'true'
 
+USER_PERMISSIONS_REALTIME_SETTINGS_VOICE = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_VOICE', 'True').lower() == 'true'
+USER_PERMISSIONS_REALTIME_SETTINGS_VAD = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_VAD', 'True').lower() == 'true'
+USER_PERMISSIONS_REALTIME_SETTINGS_NOISE_REDUCTION = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_NOISE_REDUCTION', 'True').lower() == 'true'
+USER_PERMISSIONS_REALTIME_SETTINGS_MAX_TOKENS = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_MAX_TOKENS', 'True').lower() == 'true'
+USER_PERMISSIONS_REALTIME_SETTINGS_CONTEXT = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_CONTEXT', 'False').lower() == 'true'
+USER_PERMISSIONS_REALTIME_SETTINGS_SPEED = os.environ.get('USER_PERMISSIONS_REALTIME_SETTINGS_SPEED', 'True').lower() == 'true'
+
 
 DEFAULT_USER_PERMISSIONS = {
     'workspace': {
@@ -2029,6 +2113,16 @@ DEFAULT_USER_PERMISSIONS = {
     },
     'settings': {
         'interface': USER_PERMISSIONS_SETTINGS_INTERFACE,
+    },
+    'realtime': {
+        'settings': {
+            'voice': USER_PERMISSIONS_REALTIME_SETTINGS_VOICE,
+            'vad': USER_PERMISSIONS_REALTIME_SETTINGS_VAD,
+            'noise_reduction': USER_PERMISSIONS_REALTIME_SETTINGS_NOISE_REDUCTION,
+            'max_tokens': USER_PERMISSIONS_REALTIME_SETTINGS_MAX_TOKENS,
+            'speed': USER_PERMISSIONS_REALTIME_SETTINGS_SPEED,
+            'context': USER_PERMISSIONS_REALTIME_SETTINGS_CONTEXT,
+        },
     },
 }
 
@@ -3086,6 +3180,39 @@ DEFAULT_CONFIG = {
     'audio.tts.azure.speech_output_format': AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT,
     'audio.tts.mistral.api_key': AUDIO_TTS_MISTRAL_API_KEY,
     'audio.tts.mistral.api_base_url': AUDIO_TTS_MISTRAL_API_BASE_URL,
+    # Realtime (Voice-to-Voice)
+    'audio.realtime.engine': AUDIO_RT_ENGINE,
+    'audio.realtime.api_key': AUDIO_RT_API_KEY,
+    'audio.realtime.api_base_url': AUDIO_RT_API_BASE_URL,
+    'audio.realtime.models': AUDIO_RT_MODELS,
+    'audio.realtime.voice': AUDIO_RT_VOICE,
+    'audio.realtime.vad_type': AUDIO_RT_VAD_TYPE,
+    'audio.realtime.server_vad.threshold': AUDIO_RT_SERVER_VAD_THRESHOLD,
+    'audio.realtime.server_vad.silence_duration_ms': AUDIO_RT_SERVER_VAD_SILENCE_DURATION_MS,
+    'audio.realtime.server_vad.prefix_padding_ms': AUDIO_RT_SERVER_VAD_PREFIX_PADDING_MS,
+    'audio.realtime.semantic_vad.eagerness': AUDIO_RT_SEMANTIC_VAD_EAGERNESS,
+    'audio.realtime.transcription_model': AUDIO_RT_TRANSCRIPTION_MODEL,
+    'audio.realtime.noise_reduction': AUDIO_RT_NOISE_REDUCTION,
+    'audio.realtime.max_response_output_tokens': AUDIO_RT_MAX_RESPONSE_OUTPUT_TOKENS,
+    'audio.realtime.context.enabled': AUDIO_RT_CONTEXT_ENABLED,
+    'audio.realtime.context.recent_exchanges_limit': AUDIO_RT_CONTEXT_RECENT_EXCHANGES_LIMIT,
+    'audio.realtime.context.max_history_exchanges': AUDIO_RT_CONTEXT_MAX_HISTORY_EXCHANGES,
+    'audio.realtime.context.max_history_bytes': AUDIO_RT_CONTEXT_MAX_HISTORY_BYTES,
+    'audio.realtime.context.summarize': AUDIO_RT_CONTEXT_SUMMARIZE,
+    'audio.realtime.context.unanswered_last_user_turn': AUDIO_RT_CONTEXT_UNANSWERED_LAST_USER_TURN,
+    'audio.realtime.context.summary_prompt': AUDIO_RT_CONTEXT_SUMMARY_PROMPT,
+    'audio.realtime.context.summary_max_size': AUDIO_RT_CONTEXT_SUMMARY_MAX_SIZE,
+    'audio.realtime.speed': AUDIO_RT_SPEED,
+    'audio.realtime.transcription_prompt': AUDIO_RT_TRANSCRIPTION_PROMPT,
+    'audio.realtime.vad_idle_timeout_ms': AUDIO_RT_VAD_IDLE_TIMEOUT_MS,
+    'audio.realtime.vad_create_response': AUDIO_RT_VAD_CREATE_RESPONSE,
+    'audio.realtime.vad_interrupt_response': AUDIO_RT_VAD_INTERRUPT_RESPONSE,
+    'audio.realtime.session_timeout': AUDIO_RT_SESSION_TIMEOUT,
+    'audio.realtime.idle_call_checkin_interval': AUDIO_RT_IDLE_CALL_CHECKIN_INTERVAL,
+    'audio.realtime.idle_call_checkin_prompt': AUDIO_RT_IDLE_CALL_CHECKIN_PROMPT,
+    'audio.realtime.truncation_strategy': AUDIO_RT_TRUNCATION_STRATEGY,
+    'audio.realtime.truncation_retention_ratio': AUDIO_RT_TRUNCATION_RETENTION_RATIO,
+    'audio.realtime.truncation_token_limit': AUDIO_RT_TRUNCATION_TOKEN_LIMIT,
     'webui.url': WEBUI_URL,
     'ui.enable_signup': ENABLE_SIGNUP,
     'ui.enable_login_form': ENABLE_LOGIN_FORM,
