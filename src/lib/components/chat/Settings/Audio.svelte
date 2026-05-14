@@ -12,11 +12,21 @@
 	import UserSettingRow from './UserSettingRow.svelte';
 	import SettingsSelect from '$lib/components/common/SettingsSelect.svelte';
 	import UserSettingSection from './UserSettingSection.svelte';
+	import RealtimeVoiceSettings from './RealtimeVoiceSettings.svelte';
 	const dispatch = createEventDispatcher();
 
 	const i18n = getContext('i18n');
 
 	export let saveSettings: Function;
+	export let searchTarget:
+		| 'realtime-voice'
+		| 'realtime-auto-unmute'
+		| 'realtime-voice-choice'
+		| 'realtime-speech-speed'
+		| 'realtime-vad'
+		| 'realtime-response-eagerness'
+		| 'realtime-noise-reduction'
+		| null = null;
 
 	// Audio
 	let conversationMode = false;
@@ -39,6 +49,7 @@
 
 	// Audio speed control
 	let playbackRate = 1;
+	let realtimeRef: RealtimeVoiceSettings;
 	const inputClass =
 		'h-7 w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500';
 
@@ -162,21 +173,29 @@
 	id="tab-audio"
 	class="flex flex-col h-full justify-between text-sm"
 	on:submit|preventDefault={async () => {
-		saveSettings({
-			audio: {
-				stt: {
-					engine: STTEngine !== '' ? STTEngine : undefined,
-					language: STTLanguage !== '' ? STTLanguage : undefined
-				},
-				tts: {
-					engine: TTSEngine !== '' ? TTSEngine : undefined,
-					engineConfig: TTSEngineConfig,
-					playbackRate: playbackRate,
-					voice: voice !== '' ? voice : undefined,
-					defaultVoice: $config?.audio?.tts?.voice ?? '',
-					nonLocalVoices: $config.audio.tts.engine === '' ? nonLocalVoices : undefined
-				}
+		const nextAudioSettings: Record<string, any> = {
+			stt: {
+				engine: STTEngine !== '' ? STTEngine : undefined,
+				language: STTLanguage !== '' ? STTLanguage : undefined
+			},
+			tts: {
+				engine: TTSEngine !== '' ? TTSEngine : undefined,
+				engineConfig: TTSEngineConfig,
+				playbackRate: playbackRate,
+				voice: voice !== '' ? voice : undefined,
+				defaultVoice: $config?.audio?.tts?.voice ?? '',
+				nonLocalVoices: $config.audio.tts.engine === '' ? nonLocalVoices : undefined
 			}
+		};
+
+		if ($config?.audio?.realtime?.enabled) {
+			nextAudioSettings.realtime = realtimeRef?.getRealtimeSettings() ?? ($settings?.audio?.realtime || {});
+		} else if ($settings?.audio?.realtime) {
+			nextAudioSettings.realtime = $settings.audio.realtime;
+		}
+
+		saveSettings({
+			audio: nextAudioSettings
 		});
 		dispatch('save');
 	}}
@@ -389,6 +408,10 @@
 					</datalist>
 				</UserSettingField>
 			</UserSettingSection>
+		{/if}
+
+		{#if $config?.audio?.realtime?.enabled}
+			<RealtimeVoiceSettings bind:this={realtimeRef} {searchTarget} />
 		{/if}
 	</div>
 

@@ -1,6 +1,14 @@
 <script lang="ts">
 	import { v4 as uuidv4 } from 'uuid';
-	import { config, settings, user as _user, mobile, temporaryChatEnabled } from '$lib/stores';
+	import {
+		config,
+		settings,
+		user as _user,
+		mobile,
+		showCallOverlay,
+		socket,
+		temporaryChatEnabled
+	} from '$lib/stores';
 	import { refreshChatList } from '$lib/stores/chatList';
 	import { tick, getContext, onMount, onDestroy, createEventDispatcher } from 'svelte';
 	const dispatch = createEventDispatcher();
@@ -391,6 +399,9 @@
 				history.messages[messageId].content = content;
 				history.messages[messageId].files = files;
 				await updateChat();
+				if ($showCallOverlay && chatId) {
+					$socket?.emit('realtime:chat_edit', { chatId, messageId });
+				}
 			}
 		} else {
 			if (submit) {
