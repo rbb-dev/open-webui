@@ -176,6 +176,52 @@
 			first ? 'mt-0.5' : 'mt-2'
 		} mb-0.5`;
 
+	type AudioSearchTarget =
+		| 'realtime-voice'
+		| 'realtime-auto-unmute'
+		| 'realtime-voice-choice'
+		| 'realtime-speech-speed'
+		| 'realtime-vad'
+		| 'realtime-response-eagerness'
+		| 'realtime-noise-reduction';
+
+	const audioSearchTargets: { id: AudioSearchTarget; keywords: string[] }[] = [
+		{
+			id: 'realtime-voice',
+			keywords: ['realtime voice', 'realtime audio']
+		},
+		{
+			id: 'realtime-auto-unmute',
+			keywords: ['auto unmute', 'auto-unmute', 'auto unmute microphone when call is ready']
+		},
+		{
+			id: 'realtime-voice-choice',
+			keywords: ['realtime voice choice', 'realtime call voice', 'assistant voice']
+		},
+		{
+			id: 'realtime-speech-speed',
+			keywords: ['speech speed', 'realtime speech speed', 'voice speed']
+		},
+		{
+			id: 'realtime-vad',
+			keywords: [
+				'voice activity detection',
+				'vad',
+				'smart ai powered',
+				'standard volume based',
+				'push to talk'
+			]
+		},
+		{
+			id: 'realtime-response-eagerness',
+			keywords: ['response eagerness']
+		},
+		{
+			id: 'realtime-noise-reduction',
+			keywords: ['noise reduction']
+		}
+	];
+
 	const allSettings: SettingsTab[] = [
 		{
 			id: 'general',
@@ -455,6 +501,13 @@
 				'language',
 				'non local voices',
 				'nonlocalvoices',
+				'realtime audio',
+				'realtime voice',
+				'auto unmute',
+				'voice activity detection',
+				'response eagerness',
+				'noise reduction',
+				'push to talk',
 				'save settings',
 				'savesettings',
 				'set voice',
@@ -738,7 +791,35 @@
 		{
 			id: 'admin:audio',
 			title: 'Audio',
-			keywords: ['audio', 'voice', 'speech', 'tts', 'stt', 'whisper', 'deepgram', 'azure']
+			keywords: [
+				'audio',
+				'voice',
+				'speech',
+				'tts',
+				'stt',
+				'whisper',
+				'deepgram',
+				'azure',
+				'realtime',
+				'realtime voice',
+				'realtime audio',
+				'voice activity detection',
+				'vad',
+				'push to talk',
+				'semantic vad',
+				'server vad',
+				'speech speed',
+				'transcription',
+				'noise reduction',
+				'idle timeout',
+				'idle check-in',
+				'idle call check-in',
+				'truncation',
+				'retention',
+				'conversation token limit',
+				'context',
+				'summarization'
+			]
 		},
 		{
 			id: 'admin:images',
@@ -791,6 +872,7 @@
 	let filteredSettings: string[] = [];
 	let filteredPersonalSettings: string[] = [];
 	let filteredAdminSettings: string[] = [];
+	let audioSearchTarget: AudioSearchTarget | null = null;
 
 	let search = '';
 	let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -826,6 +908,16 @@
 	};
 
 	const setFilteredSettings = () => {
+		const audioQuery = search.toLowerCase().trim().replace(/\s+/g, ' ');
+		audioSearchTarget =
+			audioQuery === ''
+				? null
+				: (audioSearchTargets.find((target) =>
+						target.keywords.some(
+							(keyword) => keyword.includes(audioQuery) || audioQuery.includes(keyword)
+						)
+					)?.id ?? null);
+
 		filteredSettings = availableSettings
 			.filter((tab) => {
 				const query = search.toLowerCase().trim();
@@ -845,6 +937,8 @@
 
 		if ($user?.role !== 'admin' && isAdminTab(selectedTab)) {
 			selectedTab = 'general';
+		} else if (audioSearchTarget && filteredSettings.includes('audio')) {
+			selectedTab = 'audio';
 		} else if (filteredSettings.length > 0 && !filteredSettings.includes(selectedTab)) {
 			selectedTab = filteredSettings[0];
 		}
@@ -1245,6 +1339,7 @@
 			{:else if selectedTab === 'audio'}
 				<Audio
 					{saveSettings}
+					searchTarget={selectedTab === 'audio' ? audioSearchTarget : null}
 					on:save={() => {
 						toast.success($i18n.t('Settings saved successfully!'));
 					}}
